@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CENACE · MDA vs MTR · Markov</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --panel:#ffffff;
+      --panel-2:#f8fafc;
+      --text:#162033;
+      --muted:#6b778c;
+      --line:#e6ebf2;
+      --blue:#2f7df6;
+      --orange:#f28b2c;
+      --green:#17a673;
+      --red:#d64545;
+      --purple:#7c5cff;
+      --shadow:0 12px 32px rgba(16,24,40,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(47,125,246,.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(124,92,255,.08), transparent 24%),
+        var(--bg);
+    }
+    .app{max-width:1440px;margin:0 auto;padding:24px}
+    .hero{
+      background:linear-gradient(135deg,#0f172a 0%, #16233f 45%, #1c2f57 100%);
+      color:#fff;border-radius:28px;padding:26px 28px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+    }
+    .hero:before,.hero:after{content:"";position:absolute;border-radius:50%;filter:blur(8px)}
+    .hero:before{width:280px;height:280px;background:rgba(47,125,246,.18);top:-110px;right:-40px}
+    .hero:after{width:220px;height:220px;background:rgba(124,92,255,.16);bottom:-120px;left:-40px}
+    .hero-grid{display:grid;grid-template-columns:1.4fr .9fr;gap:20px;position:relative;z-index:1}
+    .title{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+    .subtitle{color:rgba(255,255,255,.75);font-size:14px;line-height:1.6;margin:0}
+    .hero-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .badge{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);font-size:12px}
+    .controls{
+      display:grid;grid-template-columns:repeat(8,minmax(0,1fr)) auto auto;gap:12px;align-items:end;
+      margin-top:18px;
+    }
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:12px;color:rgba(255,255,255,.72)}
+    .field input,.field select, .field button{
+      height:44px;border:none;border-radius:14px;padding:0 14px;font-size:14px;outline:none;
+    }
+    .field input,.field select{background:#fff;color:#14213d}
+    .btn{cursor:pointer;font-weight:700;transition:.2s transform,.2s opacity}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:linear-gradient(135deg,#2f7df6,#5c9dff);color:#fff}
+    .btn-soft{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.12)}
+    .hero-side{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+    .hero-stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:16px}
+    .hero-stat small{display:block;color:rgba(255,255,255,.68);font-size:11px;margin-bottom:8px}
+    .hero-stat strong{display:block;font-size:30px;letter-spacing:-.03em}
+    .hero-stat span{display:block;color:rgba(255,255,255,.72);font-size:12px;margin-top:4px}
+    .status{
+      margin-top:16px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.10);
+      color:rgba(255,255,255,.84);font-size:13px;display:flex;align-items:center;gap:10px
+    }
+    .dot{width:10px;height:10px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 4px rgba(125,211,252,.15)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:18px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .span-12{grid-column:span 12}.span-8{grid-column:span 8}.span-7{grid-column:span 7}.span-6{grid-column:span 6}.span-5{grid-column:span 5}.span-4{grid-column:span 4}.span-3{grid-column:span 3}
+    .card-title{font-size:12px;text-transform:uppercase;letter-spacing:.10em;color:var(--muted);margin:0 0 10px;font-weight:800}
+    .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
+    .card-head h3{margin:0;font-size:20px;letter-spacing:-.02em}
+    .hint{font-size:12px;color:var(--muted);line-height:1.5}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .kpi{background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);border:1px solid var(--line);border-radius:18px;padding:16px}
+    .kpi small{display:block;color:var(--muted);font-size:11px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
+    .kpi strong{font-size:30px;display:block;letter-spacing:-.03em}
+    .kpi span{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+    .chart{width:100%;height:360px}
+    .chart-sm{width:100%;height:280px}
+    .chart-xs{width:100%;height:240px}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .insight-list{display:grid;gap:12px}
+    .insight{padding:14px 16px;border-radius:16px;background:var(--panel-2);border:1px solid var(--line)}
+    .insight b{display:block;font-size:13px;margin-bottom:6px}
+    .insight p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .pill.good{background:rgba(23,166,115,.12);color:var(--green)}
+    .pill.mid{background:rgba(242,139,44,.12);color:#b76a1d}
+    .pill.bad{background:rgba(214,69,69,.12);color:var(--red)}
+    .table-wrap{overflow:auto;max-height:420px;border:1px solid var(--line);border-radius:16px}
+    table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+    thead th{position:sticky;top:0;background:#f8fafc;z-index:1;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+    th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+    tbody tr:hover td{background:#fbfdff}
+    .mono{font-variant-numeric:tabular-nums}
+    .footer-note{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.6}
+    @media (max-width: 1180px){
+      .hero-grid,.split{grid-template-columns:1fr}
+      .controls{grid-template-columns:1fr 1fr 1fr 1fr}
+      .span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}
+      .kpi-grid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width: 760px){
+      .app{padding:14px}
+      .controls{grid-template-columns:1fr 1fr}
+      .hero-side,.kpi-grid{grid-template-columns:1fr}
+      .title{font-size:24px}
+      .hero{padding:20px}
+    }
+
+    .alert-panel{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+    .alert-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+    .alert-list{display:grid;gap:10px}
+    .alert-item{padding:12px 14px;border:1px solid #efe4c8;background:linear-gradient(180deg,#fffaf0 0%,#fff 100%);border-radius:14px}
+    .alert-item strong{display:block;font-size:13px;color:#7a4b00;margin-bottom:4px}
+    .alert-item p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+    .alert-item.bad{border-color:#f1c9c9;background:linear-gradient(180deg,#fff5f5 0%,#fff 100%)}
+    .alert-item.bad strong{color:#a12f2f}
+    .alert-item.good{border-color:#cfe9db;background:linear-gradient(180deg,#f4fcf8 0%,#fff 100%)}
+    .outlier-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;background:#fff3e0;color:#9a5d00;border:1px solid #f2d3a5}
+    .chart-guide{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--panel-2);border:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.65}
+    .chart-guide b{color:var(--text)}
+    .chart-guide ul{margin:6px 0 0 18px;padding:0}
+    .chart-guide li{margin:4px 0}
+
+  
+    .loading-overlay{
+      position:fixed; inset:0; z-index:99999;
+      display:flex; align-items:center; justify-content:center;
+      background:
+        radial-gradient(circle at top left, rgba(47,125,246,.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(124,92,255,.16), transparent 24%),
+        rgba(8,15,30,.68);
+      backdrop-filter: blur(12px);
+      opacity:0; visibility:hidden; pointer-events:none;
+      transition:opacity .28s ease, visibility .28s ease;
+    }
+    .loading-overlay.show{opacity:1; visibility:visible; pointer-events:auto}
+    .loading-shell{
+      width:min(560px, calc(100vw - 32px));
+      border-radius:28px;
+      padding:24px;
+      background:linear-gradient(180deg, rgba(255,255,255,.94) 0%, rgba(248,250,252,.98) 100%);
+      border:1px solid rgba(255,255,255,.65);
+      box-shadow:0 30px 80px rgba(0,0,0,.25);
+      position:relative;
+      overflow:hidden;
+    }
+    .loading-shell:before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(47,125,246,.12), transparent 22%),
+        radial-gradient(circle at 85% 10%, rgba(124,92,255,.12), transparent 22%);
+      pointer-events:none;
+    }
+    .loading-top{display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; z-index:1}
+    .loading-title-wrap{display:flex; align-items:center; gap:14px}
+    .loading-orb{
+      width:52px; height:52px; border-radius:18px;
+      background:linear-gradient(135deg,#2f7df6,#7c5cff);
+      box-shadow:0 12px 28px rgba(47,125,246,.28);
+      position:relative;
+      overflow:hidden;
+    }
+    .loading-orb:before, .loading-orb:after{
+      content:""; position:absolute; border-radius:50%;
+      background:rgba(255,255,255,.35);
+      animation:floatPulse 2.4s ease-in-out infinite;
+    }
+    .loading-orb:before{width:22px;height:22px;left:7px;top:7px}
+    .loading-orb:after{width:14px;height:14px;right:8px;bottom:8px;animation-delay:.7s}
+    @keyframes floatPulse{
+      0%,100%{transform:translateY(0) scale(1); opacity:.55}
+      50%{transform:translateY(-6px) scale(1.08); opacity:1}
+    }
+    .loading-title{font-size:20px; font-weight:800; color:#162033; letter-spacing:-.02em}
+    .loading-subtitle{font-size:13px; color:#6b778c; margin-top:4px}
+    .loading-percent{
+      font-size:28px; font-weight:800; color:#162033; letter-spacing:-.03em;
+      min-width:72px; text-align:right;
+    }
+    .loading-bar-wrap{margin-top:18px; position:relative; z-index:1}
+    .loading-bar{
+      height:14px; border-radius:999px; overflow:hidden;
+      background:linear-gradient(180deg,#e8edf6 0%, #dde5f1 100%);
+      border:1px solid #d5dfec;
+      position:relative;
+    }
+    .loading-bar-fill{
+      height:100%; width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,#2f7df6 0%, #5b8cff 45%, #7c5cff 100%);
+      box-shadow:0 8px 22px rgba(47,125,246,.28);
+      transition:width .45s cubic-bezier(.22,.61,.36,1);
+      position:relative;
+      overflow:hidden;
+    }
+    .loading-bar-fill:after{
+      content:"";
+      position:absolute; inset:0;
+      background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,.34) 50%, transparent 100%);
+      transform:translateX(-100%);
+      animation:barShine 1.4s linear infinite;
+    }
+    @keyframes barShine{
+      to{transform:translateX(180%)}
+    }
+    .loading-meta{
+      margin-top:10px; display:flex; justify-content:space-between; gap:10px;
+      font-size:12px; color:#6b778c; position:relative; z-index:1
+    }
+    .loading-steps{
+      margin-top:18px; display:grid; gap:10px; position:relative; z-index:1
+    }
+    .loading-step{
+      display:flex; align-items:center; gap:12px;
+      padding:12px 14px; border-radius:16px;
+      background:#fff; border:1px solid #e8edf6;
+      transition:all .24s ease;
+    }
+    .loading-step-dot{
+      width:12px; height:12px; border-radius:50%;
+      background:#d0d9e8; flex:0 0 auto; position:relative;
+      box-shadow:0 0 0 0 rgba(47,125,246,0);
+      transition:all .24s ease;
+    }
+    .loading-step.active{
+      border-color:rgba(47,125,246,.28);
+      box-shadow:0 10px 22px rgba(47,125,246,.08);
+      transform:translateY(-1px);
+    }
+    .loading-step.active .loading-step-dot{
+      background:#2f7df6;
+      box-shadow:0 0 0 8px rgba(47,125,246,.12);
+    }
+    .loading-step.done .loading-step-dot{
+      background:#17a673;
+      box-shadow:0 0 0 8px rgba(23,166,115,.10);
+    }
+    .loading-step.error .loading-step-dot{
+      background:#d64545;
+      box-shadow:0 0 0 8px rgba(214,69,69,.10);
+    }
+    .loading-step-main{font-size:13px; font-weight:700; color:#162033}
+    .loading-step-sub{font-size:12px; color:#6b778c; margin-top:2px}
+    .loading-footer{
+      margin-top:16px; display:flex; justify-content:space-between; gap:10px; align-items:center;
+      position:relative; z-index:1
+    }
+    .loading-live{
+      display:flex; align-items:center; gap:8px; color:#6b778c; font-size:12px;
+    }
+    .loading-live .pulse{
+      width:8px; height:8px; border-radius:50%; background:#2f7df6;
+      box-shadow:0 0 0 0 rgba(47,125,246,.4); animation:pulseLive 1.5s infinite;
+    }
+    @keyframes pulseLive{
+      0%{box-shadow:0 0 0 0 rgba(47,125,246,.35)}
+      70%{box-shadow:0 0 0 10px rgba(47,125,246,0)}
+      100%{box-shadow:0 0 0 0 rgba(47,125,246,0)}
+    }
+    .loading-error-msg{
+      margin-top:14px; padding:12px 14px; border-radius:14px;
+      background:linear-gradient(180deg,#fff5f5 0%, #fff 100%);
+      border:1px solid #f1c9c9;
+      color:#a12f2f; font-size:12px; line-height:1.5;
+      display:none; position:relative; z-index:1
+    }
+    .loading-error-msg.show{display:block}
+
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay" class="loading-overlay" aria-hidden="true">
+    <div class="loading-shell">
+      <div class="loading-top">
+        <div class="loading-title-wrap">
+          <div class="loading-orb"></div>
+          <div>
+            <div class="loading-title">Analizando mercado y modelos</div>
+            <div class="loading-subtitle" id="loadingSubtitle">Preparando consulta y bloqueando interacción…</div>
+          </div>
+        </div>
+        <div class="loading-percent" id="loadingPercent">0%</div>
+      </div>
+
+      <div class="loading-bar-wrap">
+        <div class="loading-bar">
+          <div id="loadingBarFill" class="loading-bar-fill"></div>
+        </div>
+        <div class="loading-meta">
+          <span id="loadingPhase">Inicializando</span>
+          <span id="loadingCounter">0 / 9</span>
+        </div>
+      </div>
+
+      <div class="loading-steps" id="loadingSteps">
+        <div class="loading-step" data-step="0">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Preparar parámetros</div>
+            <div class="loading-step-sub">Sistema, nodo, rango histórico y fecha objetivo</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="1">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Consultar Markov y predicción base</div>
+            <div class="loading-step-sub">Serie histórica, estados y métricas operativas</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="2">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Consultar FFT, clustering y anomalías</div>
+            <div class="loading-step-sub">Patrones cíclicos, regímenes y eventos extremos</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="3">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Ejecutar XGBoost</div>
+            <div class="loading-step-sub">Forecast MTR con variables temporales y MDA futuro</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="4">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Ejecutar SARIMA</div>
+            <div class="loading-step-sub">Forecast MTR clásico con estructura temporal</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="5">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Validar día objetivo</div>
+            <div class="loading-step-sub">Recuperando MDA y MTR reales disponibles en BD</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="6">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Integrar resultados</div>
+            <div class="loading-step-sub">Consolidando respuestas y preparando KPIs</div>
+          </div>
+        </div>
+        <div class="loading-step" data-step="7">
+          <div class="loading-step-dot"></div>
+          <div>
+            <div class="loading-step-main">Renderizar dashboard</div>
+            <div class="loading-step-sub">Gráficas, tabla y comparativas visuales</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading-footer">
+        <div class="loading-live"><span class="pulse"></span><span id="loadingLiveText">Trabajando en tiempo real…</span></div>
+        <div class="loading-live"><span id="loadingEta">Sincronizando endpoints</span></div>
+      </div>
+
+      <div id="loadingErrorMsg" class="loading-error-msg"></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <h1 class="title">CENACE Intelligence · MDA vs MTR · Markov</h1>
+          <p class="subtitle">Un tablero pensado para lectura ejecutiva y técnica al mismo tiempo: comparación entre mercado del día en adelanto y tiempo real, desvío estructural, perfil horario, predicción por estados y validación del modelo Markov desde tu propia base histórica.</p>
+          <div class="hero-badges">
+            <span class="badge">ECharts · zoom · tooltip cruzado</span>
+            <span class="badge">Backend first · sin cálculo crítico en front</span>
+            <span class="badge">Markov 4 estados · validación 70/30</span>
+          </div>
+          <div class="controls">
+            <div class="field">
+              <label>Sistema</label>
+              <select id="sel-sistema">
+                <option value="SIN">SIN</option>
+                <option value="BCA">BCA</option>
+                <option value="BCS">BCS</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nodo</label>
+              <input id="inp-nodo" value="01DCA-85" placeholder="Ej. 01DCA-85" />
+            </div>
+            <div class="field">
+              <label>Periodo</label>
+              <select id="sel-meses">
+                <option value="1">Enero 2025</option>
+                <option value="2">Enero–Febrero 2025</option>
+                <option value="3">Enero–Marzo 2025</option>
+                <option value="6">Enero–Junio 2025</option>
+                <option value="12" selected>Año completo 2025</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Fecha pronóstico</label>
+              <input id="inp-forecast-date" type="date" value="2026-01-01" />
+            </div>
+            <div class="field">
+              <label>Modo</label>
+              <select id="sel-view-mode">
+                <option value="daily" selected>Vista diaria</option>
+                <option value="hourly">Vista secuencial</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Rango detalle</label>
+              <select id="sel-detail-window">
+                <option value="96">Últimos 96 puntos</option>
+                <option value="168" selected>Últimos 168 puntos</option>
+                <option value="336">Últimos 336 puntos</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Clusters K</label>
+              <select id="sel-clusters-k">
+                <option value="4" selected>4 clusters</option>
+                <option value="5">5 clusters</option>
+                <option value="6">6 clusters</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Z anomalias</label>
+              <select id="sel-z-threshold">
+                <option value="2.5">2.5</option>
+                <option value="3.0" selected>3.0</option>
+                <option value="3.5">3.5</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="fetchDashboard()">Analizar</button>
+            <button class="btn btn-soft" onclick="loadDemo()">Demo</button>
+          </div>
+          <div class="status"><span class="dot"></span><span id="status">Listo para consultar el backend Markov.</span></div>
+          <div class="chart-guide" style="margin-top:12px;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.14);color:rgba(255,255,255,.84)"><b style="color:#fff">Tip de navegación:</b> en las gráficas largas puedes usar la rueda del mouse con <span class="mono" style="color:#fff">Shift</span> para acercarte, arrastrar dentro del chart para desplazarte y mover el slider inferior para ir de semanas a días puntuales.</div>
+        </div>
+        <div class="hero-side">
+          <div class="hero-stat">
+            <small>Accuracy MDA</small>
+            <strong id="hero-acc-mda">—</strong>
+            <span>Estado correcto sobre conjunto de prueba</span>
+          </div>
+          <div class="hero-stat">
+            <small>Accuracy MTR</small>
+            <strong id="hero-acc-mtr">—</strong>
+            <span>Compara estabilidad entre mercados</span>
+          </div>
+          <div class="hero-stat">
+            <small>Spread promedio</small>
+            <strong id="hero-spread">—</strong>
+            <span>MTR − MDA promedio del periodo</span>
+          </div>
+          <div class="hero-stat">
+            <small>Registros cruzados</small>
+            <strong id="hero-count">—</strong>
+            <span>Puntos con MDA y MTR disponibles</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card span-12">
+        <div class="kpi-grid">
+          <div class="kpi"><small>Promedio MDA</small><strong id="kpi-mda">—</strong><span id="kpi-mda-sub">$/MWh</span></div>
+          <div class="kpi"><small>Promedio MTR</small><strong id="kpi-mtr">—</strong><span id="kpi-mtr-sub">$/MWh</span></div>
+          <div class="kpi"><small>Máximo MDA</small><strong id="kpi-max">—</strong><span id="kpi-max-sub">Pico observado</span></div>
+          <div class="kpi"><small>Estado Markov más probable</small><strong id="kpi-state">—</strong><span id="kpi-state-sub">Próxima hora MDA</span></div>
+        </div>
+      </div>
+
+      <div class="card span-8">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Pulso del mercado</p>
+            <h3>MDA vs MTR con banda de spread</h3>
+          </div>
+          <div class="hint">La serie principal debe responder dos preguntas rápido: si el MTR está estructuralmente por arriba del MDA y en qué zonas el diferencial se amplifica.</div>
+        </div>
+        <div id="overviewChart" class="chart"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> la línea azul es MDA y la naranja es MTR. La banda morada representa la separación entre ambos. Si la naranja se mantiene arriba de la azul, el tiempo real está saliendo más caro. Usa el zoom para entrar a semanas o días específicos y comparar cuándo se abre más el spread.</div>
+      </div>
+
+      <div class="card span-4">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Lectura ejecutiva</p>
+            <h3>Hallazgos del periodo</h3>
+          </div>
+        </div>
+        <div class="insight-list" id="insightsBox"></div>
+        <div class="alert-panel">
+          <div class="alert-title">Alertas automáticas</div>
+          <div class="alert-list" id="alertBox"></div>
+        </div>
+      </div>
+
+      <div class="card span-7">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Comportamiento intradía</p>
+            <h3>Perfil horario agregado</h3>
+          </div>
+          <div class="hint">Promedio por hora del día. Útil para ubicar la ventana donde MTR se despega de MDA y dónde el nodo tiende a tensionarse.</div>
+        </div>
+        <div id="hourlyProfileChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Qué representa:</b> no son horas consecutivas del año, sino el promedio histórico de cada hora del día. Sirve para detectar en qué horas normalmente sube el nodo y en cuáles el MTR se despega del MDA.</div>
+      </div>
+
+      <div class="card span-5">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Distribución</p>
+            <h3>Mix histórico de estados</h3>
+          </div>
+          <div class="hint">Muestra si el nodo pasa la mayor parte del tiempo en estados bajos/medios o si vive presionado hacia niveles altos.</div>
+        </div>
+        <div id="distributionChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> muestra qué porcentaje del tiempo cae el nodo en cada estado Markov. Si “Alto” y “Muy alto” pesan mucho, el nodo vive más tensionado; si dominan “Bajo” y “Medio”, el comportamiento es más estable.</div>
+      </div>
+
+      <div class="card span-7">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Markov operativo</p>
+            <h3>Precio real vs predicción Markov</h3>
+          </div>
+          <div class="hint">La línea verde debe leerse como la predicción Markov de precio que devuelve el backend. Si aplicas el ajuste recomendado en backend, aquí verás el valor esperado de la próxima hora y no solo el punto medio del estado dominante.</div>
+        </div>
+        <div id="markovCompareChart" class="chart"></div>
+        <div class="chart-guide"><b>Qué representa:</b> compara el precio MDA real con la curva que produce Markov. No esperes que replique cada pico; su función es seguir el régimen probable. Si la curva verde acompaña bien la dirección general, el modelo está capturando estructura útil.</div>
+      </div>
+
+      <div class="card span-5">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Próxima hora</p>
+            <h3>Probabilidad por estado</h3>
+          </div>
+          <div class="hint">La fila de transición del último estado observado. Aquí está la esencia del modelo.</div>
+        </div>
+        <div id="probabilityChart" class="chart-xs"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> cada barra es la probabilidad de que la próxima hora caiga en un estado. La barra más alta no es un precio, sino el régimen más probable para la siguiente observación.</div>
+        <div class="split" style="margin-top:14px">
+          <div>
+            <div class="pill good" id="pill-mda">MDA · —</div>
+          </div>
+          <div>
+            <div class="pill mid" id="pill-mtr">MTR · —</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Transición</p>
+            <h3>Matriz Markov MDA</h3>
+          </div>
+          <div class="hint">Fila = estado actual. Columna = siguiente estado. El calor alto en diagonal indica persistencia del régimen.</div>
+        </div>
+        <div id="matrixChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Qué representa:</b> cada fila es el estado actual y cada columna el siguiente estado. Más intensidad en la diagonal significa persistencia; más masa fuera de la diagonal significa cambios frecuentes de régimen.</div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Precisión</p>
+            <h3>Calidad del modelo</h3>
+          </div>
+          <div class="hint">Comparación contra baseline aleatorio. Si MDA supera claramente 25%, el modelo ya está encontrando estructura.</div>
+        </div>
+        <div id="accuracyGaugeChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> compara la precisión real del modelo contra el baseline aleatorio. Si el indicador se aleja bastante de 25%, Markov sí está encontrando señal y no solo adivinando.</div>
+      </div>
+
+
+      <div class="card span-8">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Predicción naive mejorada</p>
+            <h3>Backtest y pronóstico del siguiente día</h3>
+          </div>
+          <div class="hint">Combina lag de 24 horas, lag semanal, promedio de 3 semanas y ajuste por día de la semana. Aquí debe verse si la predicción ya supera al naive simple.</div>
+        </div>
+        <div id="predictionChart" class="chart"></div>
+        <div class="chart-guide"><b>Qué representa:</b> azul = valor real en backtest, verde = predicción naive mejorada y barras moradas = error absoluto. Al final verás el forecast del siguiente día sin línea azul, porque ahí todavía no existe valor real para comparar. Usa el zoom para revisar semanas específicas.</div>
+      </div>
+
+      <div class="card span-4">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Métricas de predicción</p>
+            <h3>Resumen del predictor</h3>
+          </div>
+          <div class="hint">Errores sobre backtest y fecha pronosticada del siguiente día.</div>
+        </div>
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+          <div class="kpi"><small>MAE</small><strong id="kpi-pred-mae">—</strong><span>Error medio absoluto</span></div>
+          <div class="kpi"><small>RMSE</small><strong id="kpi-pred-rmse">—</strong><span>Raíz del error cuadrático</span></div>
+          <div class="kpi"><small>Backtest</small><strong id="kpi-pred-count">—</strong><span>Puntos evaluados</span></div>
+          <div class="kpi"><small>Forecast</small><strong id="kpi-pred-date">—</strong><span>Siguiente día calculado</span></div>
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Modelos de Machine Learning</p>
+            <h3 id="mlCompareTitle">XGBoost vs SARIMA vs MTR real</h3>
+          </div>
+          <div class="hint">Comparación directa entre dos enfoques entrenados para tiempo real. Cuando existe validación en BD, la tarjeta contrasta los pronósticos contra MTR y MDA reales del día elegido.</div>
+        </div>
+        <div id="mlCompareChart" class="chart"></div>
+        <div class="chart-guide">
+          <b>Cómo leerla:</b>
+          <ul>
+            <li><b>Azul:</b> MTR real de 2026-01-01 para 01DCA-85, cargado en duro como referencia de validación.</li>
+            <li><b>Verde:</b> pronóstico XGBoost sobre MTR.</li>
+            <li><b>Naranja:</b> pronóstico SARIMA sobre MTR.</li>
+            <li><b>Morado:</b> MDA real de 2026-01-01, agregado como referencia base del mercado del día en adelanto.</li>
+          </ul>
+          <b>Qué comparar:</b>
+          <ul>
+            <li>Si una curva se pega más a la azul, ese modelo explicó mejor el comportamiento real del mercado en tiempo real.</li>
+            <li>La línea morada ayuda a contrastar cuánto mejoran los modelos respecto al MDA de ese mismo día.</li>
+            <li>Fíjate especialmente en H19-H24, porque ahí el MTR real se dispara y separa mejor a los modelos.</li>
+            <li>Si quieres medirlo formalmente, el siguiente paso es calcular MAE y RMSE de ambos contra esta misma curva azul.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card span-7">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Cuantiles horarios</p>
+            <h3>Banda P10–P90 y medianas</h3>
+          </div>
+          <div class="hint">Sirve para ver el rango operativo típico por hora del día y detectar ventanas con mucha dispersión intrahoraria.</div>
+        </div>
+        <div id="quantilesChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> la banda azul P10–P90 es el rango operativo típico por hora; la línea azul central es la mediana MDA y la naranja la mediana MTR. Una banda ancha indica más volatilidad esperada en esa hora.</div>
+      </div>
+
+      <div class="card span-5">
+        <div class="card-head">
+          <div>
+            <p class="card-title">FFT</p>
+            <h3>Ciclos dominantes del nodo</h3>
+          </div>
+          <div class="hint">Los periodos más fuertes deberían acercarse a 24h y 168h si el nodo tiene estacionalidad diaria y semanal clara.</div>
+        </div>
+        <div id="fftChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Qué representa:</b> aquí no ves precios, sino ciclos repetitivos. Un pico cerca de 24 horas indica patrón diario; uno cerca de 168 horas indica patrón semanal. Entre más alto el pico, más fuerte ese ciclo en la serie.</div>
+      </div>
+
+      <div class="card span-7">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Clustering diario</p>
+            <h3>Regímenes de comportamiento por día</h3>
+          </div>
+          <div class="hint">Cada barra representa cuántos días caen en cada cluster. Debajo se muestra la forma típica de cada régimen.</div>
+        </div>
+        <div id="clusterBarChart" class="chart-xs"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> cada barra cuenta cuántos días del histórico se parecen entre sí y caen en un mismo régimen. Un cluster muy grande suele ser el patrón dominante del nodo.</div>
+        <div id="clusterProfileChart" class="chart-sm" style="margin-top:8px"></div>
+        <div class="chart-guide"><b>Qué representa:</b> cada línea es la forma típica de un día dentro de un cluster. Compáralas para ver si existen días valle, días con pico nocturno o días tensionados casi todo el tiempo.</div>
+      </div>
+
+      <div class="card span-5">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Anomalías</p>
+            <h3>Eventos extremos del spread</h3>
+          </div>
+          <div class="hint">Los puntos marcados son eventos donde el spread se salió de su baseline horario según el z-threshold configurado.</div>
+        </div>
+        <div id="anomalyChart" class="chart-sm"></div>
+        <div class="chart-guide"><b>Cómo leerla:</b> las barras muestran el spread observado, la línea naranja el spread normal esperado para esa hora y la roja qué tan lejos cayó del comportamiento normal. Un punto con z-score alto significa un evento realmente fuera de patrón, no solo un cambio normal.</div>
+      </div>
+
+      <div class="card span-12">
+        <div class="card-head">
+          <div>
+            <p class="card-title">Detalle operativo</p>
+            <h3>Últimos registros del conjunto consultado</h3>
+          </div>
+          <div class="hint">Pensado para auditar rápido que la historia que cuentan las gráficas sí coincide con los datos base.</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>MDA</th>
+                <th>MTR</th>
+                <th>Spread</th>
+                <th>% Dif</th>
+                <th>Pred. Markov MDA</th>
+                <th>Estado MDA</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="footer-note" id="footerNote">El dashboard espera el endpoint <span class="mono">/api/cenace/markov</span> y los nuevos servicios <span class="mono">/prediccion</span>, <span class="mono">/fft</span>, <span class="mono">/clustering</span>, <span class="mono">/anomalias</span> y <span class="mono">/cuantiles</span>. Si abres este HTML desde otro origen, recuerda habilitar CORS o servirlo desde el mismo backend.</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:8080/api/cenace';
+    const STATE_LABELS = ['Bajo', 'Medio', 'Alto', 'Muy alto'];
+    const COLORS = {
+      mda: '#2f7df6',
+      mtr: '#f28b2c',
+      markov: '#17a673',
+      spread: '#7c5cff',
+      grid: '#e6ebf2',
+      text: '#162033',
+      muted: '#6b778c'
+    };
+    const MONTHS_MAP = {
+      1: { yi:'2025', mi:'01', di:'01', yf:'2025', mf:'01', df:'31' },
+      2: { yi:'2025', mi:'01', di:'01', yf:'2025', mf:'02', df:'28' },
+      3: { yi:'2025', mi:'01', di:'01', yf:'2025', mf:'03', df:'31' },
+      6: { yi:'2025', mi:'01', di:'01', yf:'2025', mf:'06', df:'30' },
+      12:{ yi:'2025', mi:'01', di:'01', yf:'2025', mf:'12', df:'31' }
+    };
+
+const EMPTY_VALIDATION = [];
+
+        let dashboard = null;
+    let analyticsData = {prediction:null, fft:null, clustering:null, anomalies:null, quantiles:null, xgboost:null, sarima:null, validation:null};
+    let charts = {};
+
+    const initChart = (id) => echarts.init(document.getElementById(id), null, {renderer:'canvas'});
+    ['overviewChart','hourlyProfileChart','distributionChart','markovCompareChart','probabilityChart','matrixChart','accuracyGaugeChart','predictionChart','mlCompareChart','quantilesChart','fftChart','clusterBarChart','clusterProfileChart','anomalyChart']
+      .forEach(id => charts[id] = initChart(id));
+    window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+    function setStatus(msg){ document.getElementById('status').textContent = msg; }
+    function fmt(v){ return Number(v || 0).toFixed(2); }
+    function pct(v){ return `${Number(v || 0).toFixed(1)}%`; }
+    function avg(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0; }
+    function uniqueRoundedCount(arr, digits=2){
+      const set = new Set((arr || []).filter(v => v != null).map(v => Number(v).toFixed(digits)));
+      return set.size;
+    }
+
+    function buildDataZoom(total, preferredVisible = 120){
+      if (!total || total <= preferredVisible) return [];
+      const start = Math.max(0, Math.round(100 - (preferredVisible / total) * 100));
+      return [
+        {
+          type:'inside',
+          start,
+          end:100,
+          zoomOnMouseWheel:'shift',
+          moveOnMouseMove:true,
+          moveOnMouseWheel:true
+        },
+        {
+          type:'slider',
+          start,
+          end:100,
+          height:18,
+          bottom:10,
+          brushSelect:false,
+          borderColor:'transparent',
+          fillerColor:'rgba(47,125,246,0.12)',
+          backgroundColor:'rgba(230,235,242,0.55)',
+          handleSize:14,
+          textStyle:{color:COLORS.muted}
+        }
+      ];
+    }
+
+
+    let loadingState = {
+      visible:false,
+      total:8,
+      current:0,
+      timer:null,
+      progress:0
+    };
+
+    function setBodyLocked(locked){
+      document.body.style.overflow = locked ? 'hidden' : '';
+    }
+
+    function setLoadingStepState(index, state){
+      document.querySelectorAll('#loadingSteps .loading-step').forEach((el, i) => {
+        el.classList.remove('active','done','error');
+        if (i < index && state !== 'error') el.classList.add('done');
+      });
+      const target = document.querySelector(`#loadingSteps .loading-step[data-step="${index}"]`);
+      if (target) target.classList.add(state);
+    }
+
+    function updateLoadingProgress(percent, phase, subtitle){
+      loadingState.progress = Math.max(0, Math.min(100, percent));
+      document.getElementById('loadingPercent').textContent = `${Math.round(loadingState.progress)}%`;
+      document.getElementById('loadingBarFill').style.width = `${loadingState.progress}%`;
+      if (phase) document.getElementById('loadingPhase').textContent = phase;
+      if (subtitle) document.getElementById('loadingSubtitle').textContent = subtitle;
+    }
+
+    function startLoadingOverlay(){
+      loadingState.visible = true;
+      loadingState.current = 0;
+      loadingState.progress = 0;
+      const overlay = document.getElementById('loadingOverlay');
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.getElementById('loadingErrorMsg').classList.remove('show');
+      document.getElementById('loadingErrorMsg').textContent = '';
+      document.getElementById('loadingCounter').textContent = `0 / ${loadingState.total}`;
+      document.getElementById('loadingEta').textContent = 'Sincronizando endpoints';
+      document.getElementById('loadingLiveText').textContent = 'Trabajando en tiempo real…';
+      document.querySelectorAll('#loadingSteps .loading-step').forEach(el => el.classList.remove('active','done','error'));
+      updateLoadingProgress(4, 'Inicializando', 'Preparando consulta y bloqueando interacción…');
+      setBodyLocked(true);
+    }
+
+    function advanceLoading(stepIndex, percent, phase, subtitle, liveText='Procesando información…'){
+      loadingState.current = stepIndex + 1;
+      document.getElementById('loadingCounter').textContent = `${loadingState.current} / ${loadingState.total}`;
+      document.getElementById('loadingLiveText').textContent = liveText;
+      document.getElementById('loadingEta').textContent = phase || 'Analizando';
+      setLoadingStepState(stepIndex, 'active');
+      updateLoadingProgress(percent, phase, subtitle);
+    }
+
+    function markLoadingDone(stepIndex){
+      const target = document.querySelector(`#loadingSteps .loading-step[data-step="${stepIndex}"]`);
+      if (target){
+        target.classList.remove('active','error');
+        target.classList.add('done');
+      }
+    }
+
+    function finishLoadingOverlay(success=true, message=''){
+      const overlay = document.getElementById('loadingOverlay');
+      if (!success){
+        const errorBox = document.getElementById('loadingErrorMsg');
+        errorBox.textContent = message || 'La consulta falló antes de completar el dashboard.';
+        errorBox.classList.add('show');
+        document.getElementById('loadingLiveText').textContent = 'Proceso interrumpido';
+        document.getElementById('loadingEta').textContent = 'Error';
+        const currentActive = document.querySelector('#loadingSteps .loading-step.active') || document.querySelector('#loadingSteps .loading-step.done:last-child');
+        if (currentActive){
+          currentActive.classList.remove('active','done');
+          currentActive.classList.add('error');
+        }
+      } else {
+        updateLoadingProgress(100, 'Completado', 'Dashboard listo y desbloqueado.');
+        document.getElementById('loadingLiveText').textContent = 'Análisis finalizado';
+        document.getElementById('loadingEta').textContent = 'Listo';
+        document.querySelectorAll('#loadingSteps .loading-step').forEach(el => {
+          el.classList.remove('active','error');
+          el.classList.add('done');
+        });
+      }
+      setTimeout(() => {
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+        setBodyLocked(false)
+      }, success ? 550 : 1800);
+    }
+
+
+    function monthRange() {
+      const months = parseInt(document.getElementById('sel-meses').value, 10);
+      const r = MONTHS_MAP[months];
+      return { fechaInicio: `${r.yi}-${r.mi}-${r.di}`, fechaFin: `${r.yf}-${r.mf}-${r.df}` };
+    }
+
+    async function fetchDashboard() {
+      const sistema = document.getElementById('sel-sistema').value;
+      const nodo = document.getElementById('inp-nodo').value.trim().toUpperCase();
+      const k = parseInt(document.getElementById('sel-clusters-k').value, 10);
+      const zThreshold = parseFloat(document.getElementById('sel-z-threshold').value);
+      if (!nodo) return setStatus('Ingresa un nodo válido.');
+      const { fechaInicio, fechaFin } = monthRange();
+      const forecastDate = document.getElementById('inp-forecast-date').value;
+
+      startLoadingOverlay();
+      setStatus(`Consultando ${nodo} en backend…`);
+
+      try {
+        advanceLoading(0, 8, 'Preparando parámetros', 'Construyendo request para histórico, forecast y validación.', 'Validando entrada del usuario…');
+        const baseParams = `sistema=${encodeURIComponent(sistema)}&nodo=${encodeURIComponent(nodo)}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`;
+        const mlParams = `sistema=${encodeURIComponent(sistema)}&nodo=${encodeURIComponent(nodo)}&fechaInicio=${fechaInicio}&forecastDate=${forecastDate}`;
+        const urls = {
+          markov: `${API_BASE}/markov?${baseParams}`,
+          prediction: `${API_BASE}/prediccion?${baseParams}`,
+          fft: `${API_BASE}/fft?${baseParams}`,
+          clustering: `${API_BASE}/clustering?${baseParams}&k=${k}`,
+          anomalies: `${API_BASE}/anomalias?${baseParams}&zThreshold=${zThreshold}`,
+          quantiles: `${API_BASE}/cuantiles?${baseParams}`,
+          xgboost: `${API_BASE}/prediccion/xgboost?${mlParams}&horizon=24`,
+          sarima: `${API_BASE}/prediccion/sarima?${mlParams}&horizon=24`,
+          validation: `${API_BASE}/validacion-dia?sistema=${encodeURIComponent(sistema)}&nodo=${encodeURIComponent(nodo)}&fecha=${forecastDate}`
+        };
+        markLoadingDone(0);
+
+        advanceLoading(1, 18, 'Consultando serie y Markov', 'Recuperando datos base del nodo y predicción operativa.', 'Leyendo histórico del mercado…');
+        const markovPromise = fetch(urls.markov);
+        const predictionPromise = fetch(urls.prediction);
+
+        advanceLoading(2, 30, 'Consultando analíticas auxiliares', 'FFT, clustering, anomalías y cuantiles en paralelo.', 'Procesando señales y patrones…');
+        const fftPromise = fetch(urls.fft);
+        const clusteringPromise = fetch(urls.clustering);
+        const anomaliesPromise = fetch(urls.anomalies);
+        const quantilesPromise = fetch(urls.quantiles);
+
+        advanceLoading(3, 44, 'Ejecutando XGBoost', 'Solicitando forecast MTR para el día objetivo.', 'Entrenando y proyectando con XGBoost…');
+        const xgboostPromise = fetch(urls.xgboost);
+
+        advanceLoading(4, 58, 'Ejecutando SARIMA', 'Solicitando forecast temporal clásico.', 'Calculando estructura SARIMA…');
+        const sarimaPromise = fetch(urls.sarima);
+
+        advanceLoading(5, 70, 'Validando día objetivo', 'Consultando MDA y MTR reales disponibles en BD.', 'Buscando validación del día objetivo…');
+        const validationPromise = fetch(urls.validation);
+
+        const [markovResp, predictionResp, fftResp, clusteringResp, anomaliesResp, quantilesResp, xgboostResp, sarimaResp, validationResp] = await Promise.all([
+          markovPromise, predictionPromise, fftPromise, clusteringPromise, anomaliesPromise, quantilesPromise, xgboostPromise, sarimaPromise, validationPromise
+        ]);
+
+        const responses = [markovResp, predictionResp, fftResp, clusteringResp, anomaliesResp, quantilesResp, xgboostResp, sarimaResp, validationResp];
+        const bad = responses.find(r => !r.ok);
+        if (bad) {
+          let detail = '';
+          try {
+            const body = await bad.json();
+            detail = body?.message || body?.error || '';
+          } catch (_) {}
+          throw new Error(detail ? `HTTP ${bad.status} · ${detail}` : `HTTP ${bad.status}`);
+        }
+        markLoadingDone(5);
+
+        advanceLoading(6, 84, 'Integrando resultados', 'Consolidando respuestas del backend.', 'Normalizando respuestas y métricas…');
+        dashboard = await markovResp.json();
+        analyticsData = {
+          prediction: await predictionResp.json(),
+          fft: await fftResp.json(),
+          clustering: await clusteringResp.json(),
+          anomalies: await anomaliesResp.json(),
+          quantiles: await quantilesResp.json(),
+          xgboost: await xgboostResp.json(),
+          sarima: await sarimaResp.json(),
+          validation: await validationResp.json()
+        };
+        markLoadingDone(6);
+
+        advanceLoading(7, 94, 'Renderizando dashboard', 'Dibujando gráficas, KPIs y comparativas.', 'Pintando visualizaciones y tabla…');
+        renderDashboard(false);
+        markLoadingDone(7);
+
+        setStatus(`OK · ${dashboard.totalCruzados} registros cruzados cargados y analíticas auxiliares listas.`);
+        finishLoadingOverlay(true);
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error al consultar backend: ${err.message}`);
+        finishLoadingOverlay(false, err.message || 'La consulta falló.');
+      }
+    }
+
+    function loadDemo() {
+      const seed = (s)=>{ let x=s; return ()=>{ x=Math.sin(x)*10000; return x-Math.floor(x);} };
+      const rng = seed(17);
+      const serie = [];
+      let base = 1120;
+      const startDate = new Date(2025,0,1);
+      for (let d=0; d<120; d++) {
+        const date = new Date(startDate); date.setDate(startDate.getDate()+d);
+        const ds = date.toISOString().slice(0,10);
+        base += (rng() - .5) * 35;
+        base = Math.max(550, Math.min(2350, base));
+        for (let h=1; h<=24; h++) {
+          const hourFactor = 1 + .22*Math.sin((h-6)*Math.PI/12) + .12*Math.sin((h-18)*Math.PI/6);
+          const mda = base * hourFactor * (.92 + rng()*.16);
+          const mtr = mda * (.88 + rng()*.24);
+          const pred = mda * (.95 + rng()*.08);
+          serie.push({
+            fecha: ds,
+            hora: h,
+            mda: +mda.toFixed(2),
+            mtr: +mtr.toFixed(2),
+            markovPredMda: +pred.toFixed(2),
+            mdaEstado: Math.floor(rng()*4),
+            mtrEstado: Math.floor(rng()*4)
+          });
+        }
+      }
+      dashboard = {
+        nodo: 'DEMO-115', sistema: 'SIN', fechaInicio: '2025-01-01', fechaFin: '2025-04-30',
+        totalMda: serie.length, totalMtr: serie.length, totalCruzados: serie.length,
+        distribucionMda: [22.7, 27.8, 28.6, 20.9],
+        distribucionMtr: [20.1, 24.9, 31.2, 23.8],
+        prediccionProximaHoraMda: [14.2, 48.4, 28.1, 9.3],
+        prediccionProximaHoraMtr: [11.7, 39.5, 34.6, 14.2],
+        estadoMasProbableMda: 1,
+        estadoMasProbableMtr: 2,
+        accuracyMda: 63.4,
+        accuracyMtr: 52.1,
+        baselineAleatorio: 25,
+        matrizMda: [
+          {estadoActual:'Bajo', probabilidades:[48.5, 29.4, 15.2, 6.9]},
+          {estadoActual:'Medio', probabilidades:[17.8, 43.3, 28.7, 10.2]},
+          {estadoActual:'Alto', probabilidades:[7.1, 24.8, 45.4, 22.7]},
+          {estadoActual:'Muy alto', probabilidades:[4.3, 14.7, 33.8, 47.2]}
+        ],
+        serie
+      };
+      analyticsData = {
+        prediction: {
+          mae: 68.4,
+          rmse: 91.2,
+          totalPredicciones: 168,
+          forecastDate: '2025-05-01',
+          backtest: serie.slice(-168).map((x, i) => ({fecha:x.fecha, hora:x.hora, realMda:x.mda, predMda:x.mda*(0.94 + ((i%7)-3)*0.005), errorAbs: Math.abs(x.mda - x.mda*(0.94 + ((i%7)-3)*0.005))})),
+          forecastNextDay: Array.from({length:24}, (_,i)=>({fecha:'2025-05-01', hora:i+1, predMda: 980 + 140*Math.sin((i-5)*Math.PI/12) + (i>18?120:0)})),
+          quantiles: Array.from({length:24}, (_,i)=>({hora:i+1,p10Mda:760 + 80*Math.sin((i-5)*Math.PI/12),p50Mda:930 + 110*Math.sin((i-5)*Math.PI/12),p90Mda:1180 + 140*Math.sin((i-5)*Math.PI/12),p10Mtr:790 + 85*Math.sin((i-5)*Math.PI/12),p50Mtr:980 + 120*Math.sin((i-5)*Math.PI/12),p90Mtr:1260 + 150*Math.sin((i-5)*Math.PI/12)}))
+        },
+        fft: {topComponentesMda:[{periodHours:24,amplitude:820,powerShare:32},{periodHours:12,amplitude:470,powerShare:18},{periodHours:168,amplitude:390,powerShare:15},{periodHours:8,amplitude:250,powerShare:9},{periodHours:6,amplitude:180,powerShare:6}]},
+        clustering: {clusters:[
+          {cluster:0,totalDias:34,centroide24h:Array.from({length:24},(_,i)=>850 + 60*Math.sin((i-6)*Math.PI/12))},
+          {cluster:1,totalDias:41,centroide24h:Array.from({length:24},(_,i)=>980 + 90*Math.sin((i-6)*Math.PI/12))},
+          {cluster:2,totalDias:28,centroide24h:Array.from({length:24},(_,i)=>1180 + 130*Math.sin((i-7)*Math.PI/12) + (i>18?160:0))},
+          {cluster:3,totalDias:17,centroide24h:Array.from({length:24},(_,i)=>760 + 45*Math.sin((i-5)*Math.PI/12))}
+        ]},
+        anomalies: {anomalies: serie.filter((_,i)=> i%137===0).slice(0,12).map((x,idx)=>({fecha:x.fecha,hora:x.hora,spread:(x.mtr-x.mda)+(idx%2?140:-120),baseline:35 + (x.hora/24)*20,zScore: idx%2?3.6:3.1}))},
+        quantiles: {quantiles: Array.from({length:24}, (_,i)=>({hora:i+1,p10Mda:760 + 80*Math.sin((i-5)*Math.PI/12),p50Mda:930 + 110*Math.sin((i-5)*Math.PI/12),p90Mda:1180 + 140*Math.sin((i-5)*Math.PI/12),p10Mtr:790 + 85*Math.sin((i-5)*Math.PI/12),p50Mtr:980 + 120*Math.sin((i-5)*Math.PI/12),p90Mtr:1260 + 150*Math.sin((i-5)*Math.PI/12)}))},
+        xgboost: {model:'xgboost', horizon:24, forecastDate:'2025-05-01', forecast:Array.from({length:24}, (_,i)=>({fecha:'2025-05-01', hora:i+1, valor: 970 + 135*Math.sin((i-5)*Math.PI/12) + (i>18?135:0) + (i%4===0?18:0)}))},
+        sarima: {model:'sarima', horizon:24, forecastDate:'2025-05-01', forecast:Array.from({length:24}, (_,i)=>({fecha:'2025-05-01', hora:i+1, valor: 955 + 115*Math.sin((i-5)*Math.PI/12) + (i>18?95:0)}))}
+      };
+      renderDashboard(true);
+      setStatus('Demo activo · visualización con datos simulados.');
+    }
+
+    function renderDashboard(isDemo) {
+      const s = dashboard.serie || [];
+      if (!s.length) return;
+      const spreads = s.map(x => (x.mtr ?? 0) - (x.mda ?? 0));
+      const avgMda = avg(s.map(x => x.mda));
+      const avgMtr = avg(s.map(x => x.mtr));
+      const maxMda = Math.max(...s.map(x => x.mda));
+      const avgSpread = avg(spreads);
+
+      document.getElementById('hero-acc-mda').textContent = pct(dashboard.accuracyMda);
+      document.getElementById('hero-acc-mtr').textContent = pct(dashboard.accuracyMtr);
+      document.getElementById('hero-spread').textContent = `${avgSpread >= 0 ? '+' : ''}${fmt(avgSpread)}`;
+      document.getElementById('hero-count').textContent = dashboard.totalCruzados?.toLocaleString('es-MX') || '—';
+
+      document.getElementById('kpi-mda').textContent = `$${fmt(avgMda)}`;
+      document.getElementById('kpi-mtr').textContent = `$${fmt(avgMtr)}`;
+      document.getElementById('kpi-max').textContent = `$${fmt(maxMda)}`;
+      document.getElementById('kpi-state').textContent = STATE_LABELS[dashboard.estadoMasProbableMda] || '—';
+      document.getElementById('kpi-state-sub').textContent = `Próxima hora MDA${isDemo ? ' · demo' : ''}`;
+
+      renderInsights(avgMda, avgMtr, avgSpread);
+      renderAlerts();
+      renderOverviewChart();
+      renderHourlyProfileChart();
+      renderDistributionChart();
+      renderProbabilityChart();
+      renderMarkovCompareChart();
+      renderMatrixChart();
+      renderAccuracyGaugeChart();
+      renderPredictionSummary();
+      renderPredictionChart();
+      renderMlCompareChart();
+      renderQuantilesChart();
+      renderFftChart();
+      renderClusterCharts();
+      renderAnomalyChart();
+      renderTable();
+    }
+
+    function renderInsights(avgMda, avgMtr, avgSpread) {
+      const accMda = dashboard.accuracyMda || 0;
+      const ratio = avgMda ? (avgSpread / avgMda) * 100 : 0;
+      const state = STATE_LABELS[dashboard.estadoMasProbableMda] || '—';
+      const outliers = detectOutliers(dashboard.serie || []);
+      const items = [
+        {
+          title: '1. Relación estructural entre mercados',
+          body: `En el periodo consultado, el MTR se ubicó ${avgSpread >= 0 ? 'por encima' : 'por debajo'} del MDA en promedio por ${Math.abs(avgSpread).toFixed(2)} $/MWh. Eso equivale a una variación media de ${Math.abs(ratio).toFixed(2)}%.`
+        },
+        {
+          title: '2. Señal del modelo Markov',
+          body: `El siguiente estado más probable para MDA es “${state}”. Esto representa el régimen operativo más probable para la próxima hora, no un precio exacto. La gráfica Markov gana mucha calidad cuando el backend devuelve valor esperado y no solo el midpoint del estado dominante.`
+        },
+        {
+          title: '3. Riesgo operativo detectado',
+          body: outliers.length
+            ? `Se detectaron ${outliers.length} eventos atípicos donde el spread se disparó de forma no trivial. El más severo alcanzó ${fmt(Math.max(...outliers.map(x => Math.abs(x.pctDiff))))}% respecto al MDA.`
+            : 'No se detectaron eventos extremos relevantes en el diferencial MTR−MDA para el rango cargado.'
+        },
+        {
+          title: '4. Utilidad del modelo',
+          body: `Accuracy MDA: ${pct(accMda)} vs baseline aleatorio ${pct(dashboard.baselineAleatorio)}. ${accMda >= 60 ? 'La señal es fuerte y consistente.' : accMda >= 40 ? 'La señal ya es útil para orientación táctica.' : 'Conviene ampliar histórico o segmentar por hora/día.'}`
+        }
+      ];
+      document.getElementById('insightsBox').innerHTML = items.map(x => `<div class="insight"><b>${x.title}</b><p>${x.body}</p></div>`).join('');
+      document.getElementById('pill-mda').textContent = `MDA · ${STATE_LABELS[dashboard.estadoMasProbableMda] || '—'}`;
+      document.getElementById('pill-mtr').textContent = `MTR · ${STATE_LABELS[dashboard.estadoMasProbableMtr] || '—'}`;
+    }
+
+    function detectOutliers(series) {
+      const enriched = (series || []).map(x => {
+        const spread = (x.mtr ?? 0) - (x.mda ?? 0);
+        // Fix: cuando MDA es 0 o muy pequeño (<5) el % es inútil — usar 0 para no distorsionar alertas
+        const mdaValido = x.mda != null && Math.abs(x.mda) >= 5;
+        const pctDiff = mdaValido ? (spread / Math.abs(x.mda)) * 100 : 0;
+        const mdaPequeno = !mdaValido && Math.abs(spread) > 50; // spread real grande aunque MDA ≈ 0
+        return {...x, spread, pctDiff, absSpread: Math.abs(spread), absPct: Math.abs(pctDiff), mdaPequeno};
+      }).filter(x => Number.isFinite(x.pctDiff));
+      if (!enriched.length) return [];
+      const spreads = enriched.map(x => x.spread);
+      const mean = avg(spreads);
+      const variance = avg(spreads.map(x => Math.pow(x - mean, 2)));
+      const std = Math.sqrt(variance || 0);
+      // Incluir: % alto normal, spread estadístico extremo, o MDA≈0 con spread real grande
+      const outliers = enriched.filter(x =>
+        x.absPct >= 30 ||
+        (std > 0 && Math.abs(x.spread - mean) >= std * 2.2) ||
+        x.mdaPequeno
+      );
+      // Ordenar por spread absoluto cuando pctDiff es 0 (caso MDA≈0)
+      outliers.sort((a,b) => {
+        const va = a.pctDiff !== 0 ? Math.abs(a.pctDiff) : a.absSpread;
+        const vb = b.pctDiff !== 0 ? Math.abs(b.pctDiff) : b.absSpread;
+        return vb - va;
+      });
+      return outliers.slice(0, 8);
+    }
+
+    function renderAlerts() {
+      const alerts = detectOutliers(dashboard.serie || []);
+      const el = document.getElementById('alertBox');
+      if (!alerts.length) {
+        el.innerHTML = `<div class="alert-item good"><strong>Sin despegues críticos</strong><p>No se encontraron puntos donde el MTR se haya separado en 30% o más del MDA ni eventos estadísticamente extremos para este rango.</p></div>`;
+        return;
+      }
+      el.innerHTML = alerts.slice(0,4).map((a,i) => {
+        const severe = Math.abs(a.pctDiff) >= 30 || a.mdaPequeno;
+        const title = a.mdaPequeno
+          ? `Spread extremo con MDA ≈ $0: ${a.spread >= 0 ? '+' : ''}$${fmt(a.spread)}/MWh`
+          : severe
+            ? `MTR se despegó ${a.pctDiff >= 0 ? '+' : ''}${fmt(a.pctDiff)}% del MDA aquí`
+            : `Spread atípico detectado (${a.spread >= 0 ? '+' : ''}$${fmt(a.spread)}/MWh)`;
+        return `<div class="alert-item ${severe ? 'bad' : ''}"><strong>${title}</strong><p>${a.fecha} · H${a.hora} · MDA $${fmt(a.mda)} vs MTR $${fmt(a.mtr)} · spread ${a.spread >= 0 ? '+' : ''}$${fmt(a.spread)}/MWh.</p></div>`;
+      }).join('');
+    }
+
+    function renderOverviewChart() {
+      const mode = document.getElementById('sel-view-mode').value;
+      const s = dashboard.serie || [];
+      let labels = [], mda = [], mtr = [], spread = [], points = [];
+
+      if (mode === 'daily') {
+        const map = {};
+        s.forEach(x => {
+          if (!map[x.fecha]) map[x.fecha] = {mda:[], mtr:[], items:[]};
+          map[x.fecha].mda.push(x.mda);
+          map[x.fecha].mtr.push(x.mtr);
+          map[x.fecha].items.push(x);
+        });
+        labels = Object.keys(map).sort();
+        mda = labels.map(k => avg(map[k].mda));
+        mtr = labels.map(k => avg(map[k].mtr));
+        spread = labels.map((_,i) => mtr[i] - mda[i]);
+        points = labels.map(k => {
+          const d = map[k];
+          const m = avg(d.mda); const t = avg(d.mtr); const sp = t - m;
+          const pct = Math.abs(m) >= 5 ? (sp / Math.abs(m)) * 100 : 0;
+          return {label:k, mda:m, mtr:t, spread:sp, pctDiff:pct};
+        });
+      } else {
+        labels = s.map(x => `${x.fecha} H${x.hora}`);
+        mda = s.map(x => x.mda);
+        mtr = s.map(x => x.mtr);
+        spread = s.map(x => x.mtr - x.mda);
+        points = s.map((x,i) => {
+          const sp = x.mtr - x.mda;
+          const pct = Math.abs(x.mda) >= 5 ? (sp / Math.abs(x.mda)) * 100 : 0;
+          return {label:labels[i], mda:x.mda, mtr:x.mtr, spread:sp, pctDiff:pct};
+        });
+      }
+
+      const lower = points.map(p => Math.min(p.mda, p.mtr));
+      const delta = points.map(p => Math.abs(p.mtr - p.mda));
+      const outliers = points
+        .map((p, idx) => ({...p, idx, absPct: Math.abs(p.pctDiff)}))
+        .filter(p => p.absPct >= 30)
+        .sort((a,b) => b.absPct - a.absPct)
+        .slice(0, 20);
+      const spreadColors = spread.map(v => v >= 0 ? 'rgba(124,92,255,.45)' : 'rgba(214,69,69,.36)');
+
+      charts.overviewChart.setOption({
+        backgroundColor:'transparent',
+        animationDuration:700,
+        tooltip:{
+          trigger:'axis',
+          axisPointer:{type:'cross'},
+          formatter:(params) => {
+            const p = points[params?.[0]?.dataIndex || 0] || {};
+            return `<div style="min-width:220px"><b>${p.label || ''}</b><br/>MDA: $${fmt(p.mda)} /MWh<br/>MTR: $${fmt(p.mtr)} /MWh<br/>Spread: <span style="color:${(p.spread||0)>=0?'#7c5cff':'#d64545'}">${(p.spread||0)>=0?'+':''}$${fmt(p.spread)}</span><br/>Dif: ${(p.pctDiff||0)>=0?'+':''}${fmt(p.pctDiff)}%</div>`;
+          }
+        },
+        legend:{top:0,textStyle:{color:COLORS.muted},data:['MDA','MTR','Banda de spread','Spread','Outliers']},
+        toolbox:{right:10,feature:{dataZoom:{yAxisIndex:'none'},restore:{},saveAsImage:{}}},
+        grid:{left:58,right:64,top:42,bottom:74},
+        dataZoom:[
+          {type:'inside',xAxisIndex:0,filterMode:'none'},
+          {type:'slider',xAxisIndex:0,height:18,bottom:24,start:0,end:100,brushSelect:false,handleSize:16}
+        ],
+        xAxis:{type:'category',data:labels,axisLine:{lineStyle:{color:COLORS.grid}},axisLabel:{color:COLORS.muted,hideOverlap:true}},
+        yAxis:[
+          {type:'value',name:'$/MWh',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+          {type:'value',name:'Spread',axisLabel:{color:COLORS.muted},splitLine:{show:false}}
+        ],
+        series:[
+          {name:'Base banda',type:'line',data:lower,symbol:'none',lineStyle:{opacity:0},stack:'spreadBand',silent:true,tooltip:{show:false}},
+          {name:'Banda de spread',type:'line',data:delta,symbol:'none',lineStyle:{opacity:0},stack:'spreadBand',areaStyle:{color:'rgba(124,92,255,.14)'},silent:true,emphasis:{disabled:true}},
+          {name:'MDA',type:'line',smooth:true,symbol:'none',data:mda,lineStyle:{width:3,color:COLORS.mda},areaStyle:{color:'rgba(47,125,246,.06)'},z:3},
+          {name:'MTR',type:'line',smooth:true,symbol:'none',data:mtr,lineStyle:{width:3,color:COLORS.mtr},z:3},
+          {name:'Spread',type:'bar',yAxisIndex:1,data:spread,barMaxWidth:10,itemStyle:{color:(params)=>spreadColors[params.dataIndex],borderRadius:[8,8,0,0]},z:1},
+          {name:'Outliers',type:'scatter',data:outliers.map(o => [o.idx, o.mtr, o.label, o.pctDiff, o.spread]),symbolSize:(val)=>Math.min(24, 10 + Math.abs(val[3]) / 6),itemStyle:{color:'#d64545',borderColor:'#fff',borderWidth:2,shadowBlur:10,shadowColor:'rgba(214,69,69,.35)'},tooltip:{formatter:(p)=>`<b>${p.data[2]}</b><br/>MTR se despegó ${p.data[3] >= 0 ? '+' : ''}${fmt(p.data[3])}% del MDA<br/>Spread: ${p.data[4] >= 0 ? '+' : ''}$${fmt(p.data[4])}/MWh`},z:5},
+          {name:'Evento ≥ +30%',type:'line',yAxisIndex:1,data:new Array(labels.length).fill(30),symbol:'none',lineStyle:{type:'dashed',width:1,color:'rgba(214,69,69,.55)'},tooltip:{show:false},z:0}
+        ]
+      });
+    }
+
+    function renderHourlyProfileChart() {
+      const buckets = {};
+      (dashboard.serie || []).forEach(x => {
+        if (!buckets[x.hora]) buckets[x.hora] = {mda:[], mtr:[], spread:[]};
+        buckets[x.hora].mda.push(x.mda);
+        buckets[x.hora].mtr.push(x.mtr);
+        buckets[x.hora].spread.push(x.mtr - x.mda);
+      });
+      const hours = Object.keys(buckets).map(Number).sort((a,b)=>a-b);
+      const mda = hours.map(h => avg(buckets[h].mda));
+      const mtr = hours.map(h => avg(buckets[h].mtr));
+      const spread = hours.map(h => avg(buckets[h].spread));
+
+      charts.hourlyProfileChart.setOption({
+        tooltip:{
+          trigger:'axis',
+          formatter:(params) => {
+            const hora = params[0]?.axisValue || '';
+            return `<b>${hora}</b><br/>` + params.map(p => {
+              const val = typeof p.value === 'number' ? p.value.toFixed(2) : p.value;
+              return `${p.marker}${p.seriesName}&nbsp;&nbsp;<b>${val}</b>`;
+            }).join('<br/>');
+          }
+        },
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        grid:{left:54,right:54,top:40,bottom:40},
+        xAxis:{type:'category',data:hours.map(h=>`H${h}`),axisLabel:{color:COLORS.muted}},
+        yAxis:[
+          {type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+          {type:'value',axisLabel:{color:COLORS.muted},splitLine:{show:false}}
+        ],
+        series:[
+          {name:'MDA',type:'bar',data:mda,barGap:'15%',itemStyle:{color:'rgba(47,125,246,.85)',borderRadius:[6,6,0,0]}},
+          {name:'MTR',type:'bar',data:mtr,itemStyle:{color:'rgba(242,139,44,.82)',borderRadius:[6,6,0,0]}},
+          {name:'Spread promedio',type:'line',yAxisIndex:1,data:spread,symbol:'circle',symbolSize:6,lineStyle:{width:3,color:COLORS.spread}}
+        ]
+      });
+    }
+
+    function renderDistributionChart() {
+      charts.distributionChart.setOption({
+        tooltip:{trigger:'item'},
+        legend:{bottom:0,textStyle:{color:COLORS.muted}},
+        series:[
+          {
+            name:'MDA',type:'pie',radius:['45%','68%'],center:['28%','48%'],label:{formatter:'{b}\n{d}%',color:COLORS.text},
+            data:(dashboard.distribucionMda || []).map((v,i)=>({name:STATE_LABELS[i],value:v,itemStyle:{color:[ '#1dc997','#2f7df6','#f2b42c','#f05d5e'][i]}}))
+          },
+          {
+            name:'MTR',type:'pie',radius:['45%','68%'],center:['74%','48%'],label:{formatter:'{b}\n{d}%',color:COLORS.text},
+            data:(dashboard.distribucionMtr || []).map((v,i)=>({name:STATE_LABELS[i],value:v,itemStyle:{color:[ '#5dd8b0','#4b90f8','#f6bf57','#f37b7c'][i]}}))
+          }
+        ],
+        graphic:[
+          {type:'text',left:'20%',top:'44%',style:{text:'MDA',fill:COLORS.muted,font:'700 14px Inter'}},
+          {type:'text',left:'66%',top:'44%',style:{text:'MTR',fill:COLORS.muted,font:'700 14px Inter'}}
+        ]
+      });
+    }
+
+    function renderProbabilityChart() {
+      const raw = (dashboard.prediccionProximaHoraMda || []).map(v => Number(v || 0));
+      const needsScaling = raw.length && Math.max(...raw) <= 1.000001;
+      const values = raw.map(v => needsScaling ? v * 100 : v);
+
+      charts.probabilityChart.setOption({
+        tooltip:{
+          trigger:'axis',
+          valueFormatter:(value)=>`${Number(value).toFixed(2)}%`
+        },
+        grid:{left:70,right:24,top:16,bottom:20},
+        xAxis:{type:'value',max:100,axisLabel:{formatter:'{value}%',color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        yAxis:{type:'category',data:STATE_LABELS,axisLabel:{color:COLORS.text}},
+        series:[
+          {
+            type:'bar',
+            data:values.map((v,i)=>({value:v,itemStyle:{color:[ '#1dc997','#2f7df6','#f2b42c','#f05d5e'][i],borderRadius:10}})),
+            label:{show:true,position:'right',formatter:(p)=>`${Number(p.value).toFixed(1)}%`,color:COLORS.text}
+          }
+        ]
+      });
+    }
+
+    function renderMarkovCompareChart() {
+      const windowSize = parseInt(document.getElementById('sel-detail-window').value,10);
+      const s = (dashboard.serie || []).slice(-windowSize);
+      const pred = s.map(x => x.markovPredMda);
+      const suspiciousFlat = uniqueRoundedCount(pred, 2) <= 6;
+      const yValues = s.flatMap(x => [x.mda, x.mtr, x.markovPredMda]).filter(v => v != null);
+      const yMin = yValues.length ? Math.min(...yValues) : null;
+      const yMax = yValues.length ? Math.max(...yValues) : null;
+
+      charts.markovCompareChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        dataZoom: buildDataZoom(s.length, Math.min(168, windowSize)),
+        toolbox:{right:10,feature:{dataZoom:{yAxisIndex:'none'},restore:{}}},
+        grid:{left:58,right:24,top:60,bottom:78},
+        xAxis:{type:'category',data:s.map(x=>`${x.fecha} H${x.hora}`),axisLabel:{color:COLORS.muted,hideOverlap:true}},
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        graphic: suspiciousFlat ? [{
+          type:'group',
+          left:16,
+          top:18,
+          children:[
+            {
+              type:'rect',
+              shape:{x:0,y:0,width:520,height:28,r:8},
+              style:{fill:'rgba(242,139,44,0.10)',stroke:'rgba(242,139,44,0.35)'}
+            },
+            {
+              type:'text',
+              style:{
+                x:12,
+                y:18,
+                text:'La señal Markov viene muy escalonada. Esto suele pasar cuando backend traduce el estado dominante a midpoint. Para una curva más natural, calcula valor esperado.',
+                fill:COLORS.muted,
+                font:'12px Inter'
+              }
+            }
+          ]
+        }] : [],
+        series:[
+          {name:'MDA real',type:'line',smooth:true,symbol:'none',data:s.map(x=>x.mda),lineStyle:{width:2.5,color:COLORS.mda}},
+          {name:'MTR real',type:'line',smooth:true,symbol:'none',data:s.map(x=>x.mtr),lineStyle:{width:2.5,color:COLORS.mtr}},
+          {
+            name:'Predicción Markov (MDA)',
+            type:'line',
+            smooth: !suspiciousFlat,
+            symbol:'none',
+            data: pred,
+            lineStyle:{width:2.5,type:'dashed',color:COLORS.markov},
+            markLine: suspiciousFlat && yMin != null ? {
+              silent:true,
+              symbol:'none',
+              label:{show:false},
+              lineStyle:{type:'dotted',color:'rgba(23,166,115,0.4)'},
+              data:[{yAxis:yMin}]
+            } : undefined
+          }
+        ]
+      });
+    }
+
+    function renderMatrixChart() {
+      const rows = dashboard.matrizMda || [];
+      const data = [];
+      rows.forEach((row,y) => (row.probabilidades || []).forEach((val,x) => data.push([x,y,val])));
+      charts.matrixChart.setOption({
+        tooltip:{position:'top',formatter:(p)=>`${STATE_LABELS[p.value[1]]} → ${STATE_LABELS[p.value[0]]}<br>${Number(p.value[2]).toFixed(2)}%`},
+        grid:{left:70,right:24,top:20,bottom:40},
+        xAxis:{type:'category',data:STATE_LABELS,axisLabel:{color:COLORS.text}},
+        yAxis:{type:'category',data:STATE_LABELS,axisLabel:{color:COLORS.text}},
+        visualMap:{min:0,max:100,calculable:false,orient:'horizontal',left:'center',bottom:0,
+          inRange:{color:['#eef5ff','#bfd6ff','#74a8ff','#2f7df6','#173f88']},textStyle:{color:COLORS.muted}},
+        series:[{type:'heatmap',data, label:{show:true,formatter:(p)=>`${Number(p.value[2]).toFixed(1)}%`,color:'#0f172a'}, emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,.18)'}}}]
+      });
+    }
+
+    function renderAccuracyGaugeChart() {
+      const a1 = Number(dashboard.accuracyMda || 0);
+      const a2 = Number(dashboard.accuracyMtr || 0);
+      const base = Number(dashboard.baselineAleatorio || 25);
+      charts.accuracyGaugeChart.setOption({
+        series:[
+          {
+            type:'gauge',center:['28%','58%'],radius:'80%',min:0,max:100,startAngle:210,endAngle:-30,
+            progress:{show:true,width:14,itemStyle:{color:COLORS.mda}},axisLine:{lineStyle:{width:14,color:[[1,'#edf2f7']]}},
+            axisTick:{show:false},splitLine:{show:false},axisLabel:{show:false},pointer:{show:false},anchor:{show:false},
+            detail:{valueAnimation:true,formatter:(v)=>`MDA\n${v.toFixed(1)}%`,fontSize:18,color:COLORS.text,offsetCenter:[0,'8%']},data:[{value:a1}]
+          },
+          {
+            type:'gauge',center:['72%','58%'],radius:'80%',min:0,max:100,startAngle:210,endAngle:-30,
+            progress:{show:true,width:14,itemStyle:{color:COLORS.mtr}},axisLine:{lineStyle:{width:14,color:[[1,'#edf2f7']]}},
+            axisTick:{show:false},splitLine:{show:false},axisLabel:{show:false},pointer:{show:false},anchor:{show:false},
+            detail:{valueAnimation:true,formatter:(v)=>`MTR\n${v.toFixed(1)}%`,fontSize:18,color:COLORS.text,offsetCenter:[0,'8%']},data:[{value:a2}]
+          }
+        ],
+        graphic:[
+          {type:'text',left:'center',top:'5%',style:{text:`Baseline aleatorio: ${base.toFixed(1)}%`,fill:COLORS.muted,font:'600 13px Inter'}}
+        ]
+      });
+    }
+
+
+    function renderPredictionSummary() {
+      const p = analyticsData.prediction || {};
+      document.getElementById('kpi-pred-mae').textContent = p.mae != null ? `$${fmt(p.mae)}` : '—';
+      document.getElementById('kpi-pred-rmse').textContent = p.rmse != null ? `$${fmt(p.rmse)}` : '—';
+      document.getElementById('kpi-pred-count').textContent = p.totalPredicciones != null ? p.totalPredicciones.toLocaleString('es-MX') : '—';
+      document.getElementById('kpi-pred-date').textContent = p.forecastDate || '—';
+    }
+
+    function renderPredictionChart() {
+      const p = analyticsData.prediction || {};
+      const backtest = p.backtest || [];
+      const forecast = p.forecastNextDay || [];
+      const btLabels = backtest.map(x => `${x.fecha} H${x.hora}`);
+      const fcLabels = forecast.map(x => `${x.fecha} H${x.hora}`);
+      charts.predictionChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        dataZoom: buildDataZoom(btLabels.length + fcLabels.length, Math.max(48, Math.min(168, btLabels.length + fcLabels.length))),
+        toolbox:{right:10,feature:{dataZoom:{yAxisIndex:'none'},restore:{}}},
+        grid:{left:58,right:24,top:60,bottom:78},
+        xAxis:{
+          type:'category',
+          data:[...btLabels, ...fcLabels],
+          axisLabel:{color:COLORS.muted,hideOverlap:true}
+        },
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        series:[
+          {name:'Real MDA (backtest)',type:'line',symbol:'none',smooth:true,data:[...backtest.map(x=>x.realMda), ...fcLabels.map(()=>null)],lineStyle:{width:2.5,color:COLORS.mda}},
+          {name:'Predicción MDA',type:'line',symbol:'none',smooth:true,data:[...backtest.map(x=>x.predMda), ...forecast.map(x=>x.predMda)],lineStyle:{width:2.5,color:'#0f766e'}},
+          {name:'Error abs',type:'bar',yAxisIndex:0,data:[...backtest.map(x=>x.errorAbs), ...fcLabels.map(()=>null)],barMaxWidth:10,itemStyle:{color:'rgba(124,92,255,0.35)'}}
+        ],
+        graphic: forecast.length ? [{type:'text',right:18,top:18,style:{text:`Forecast: ${forecast[0].fecha}`,fill:COLORS.muted,font:'12px Inter'}}] : []
+      });
+    }
+
+
+    function renderMlCompareChart() {
+      const xgb = analyticsData.xgboost?.forecast || [];
+      const sarima = analyticsData.sarima?.forecast || [];
+      const validation = analyticsData.validation?.hours || [];
+      const forecastDate = document.getElementById('inp-forecast-date').value || analyticsData.xgboost?.forecastDate || '';
+
+      document.getElementById('mlCompareTitle').textContent = `XGBoost vs SARIMA vs validación real ${forecastDate}`;
+
+      if (!xgb.length || !sarima.length) {
+        charts.mlCompareChart.clear();
+        return;
+      }
+
+      const labels = Array.from({length:24}, (_,i)=>`H${i+1}`);
+      const xgbData = xgb.map(x => x.valor ?? x.predMda ?? x.value ?? null);
+      const sarimaData = sarima.map(x => x.valor ?? x.predMda ?? x.value ?? null);
+      const byHour = new Map(validation.map(x => [Number(x.hora), x]));
+      const realMtr = labels.map((_,i) => byHour.get(i+1)?.mtr ?? null);
+      const realMda = labels.map((_,i) => byHour.get(i+1)?.mda ?? null);
+      const hasMtr = realMtr.some(v => v != null);
+      const hasMda = realMda.some(v => v != null);
+
+      const legendData = [];
+      const series = [];
+      if (hasMtr) {
+        legendData.push(`MTR real ${forecastDate}`);
+        series.push({
+          name:`MTR real ${forecastDate}`,
+          type:'line',
+          smooth:true,
+          symbol:'circle',
+          symbolSize:6,
+          data:realMtr,
+          lineStyle:{width:3,color:COLORS.mda}
+        });
+      }
+      legendData.push('XGBoost forecast MTR');
+      series.push({
+        name:'XGBoost forecast MTR',
+        type:'line',
+        smooth:true,
+        symbol:'none',
+        data:xgbData,
+        lineStyle:{width:3,color:'#0f766e'}
+      });
+      legendData.push('SARIMA forecast MTR');
+      series.push({
+        name:'SARIMA forecast MTR',
+        type:'line',
+        smooth:true,
+        symbol:'none',
+        data:sarimaData,
+        lineStyle:{width:3,color:COLORS.mtr,type:'dashed'}
+      });
+      if (hasMda) {
+        legendData.push(`MDA real ${forecastDate}`);
+        series.push({
+          name:`MDA real ${forecastDate}`,
+          type:'line',
+          smooth:true,
+          symbol:'none',
+          data:realMda,
+          lineStyle:{width:2,type:'dotted',color:'#9b59b6'}
+        });
+      }
+
+      charts.mlCompareChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted},data:legendData},
+        toolbox:{right:10,feature:{restore:{},saveAsImage:{}}},
+        grid:{left:58,right:24,top:42,bottom:46},
+        xAxis:{type:'category',data:labels,axisLabel:{color:COLORS.muted}},
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        series,
+        graphic: [{
+          type:'text',
+          right:18,
+          top:18,
+          style:{
+            text: hasMtr ? `Validación visual contra MTR y MDA reales de ${forecastDate}` : `MTR real aún no disponible para ${forecastDate}. Comparación provisional contra MDA real.`,
+            fill:COLORS.muted,
+            font:'12px Inter'
+          }
+        }]
+      });
+    }
+
+    function renderQuantilesChart() {
+      const q = (analyticsData.quantiles && analyticsData.quantiles.quantiles) || (analyticsData.prediction && analyticsData.prediction.quantiles) || [];
+      const hours = q.map(x => `H${x.hora}`);
+      charts.quantilesChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        toolbox:{right:10,feature:{restore:{}}},
+        grid:{left:52,right:24,top:52,bottom:72},
+        xAxis:{type:'category',data:hours,axisLabel:{color:COLORS.muted}},
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        series:[
+          {name:'P10 MDA',type:'line',symbol:'none',data:q.map(x=>x.p10Mda),lineStyle:{opacity:0},stack:'mdaBand',areaStyle:{color:'rgba(47,125,246,0.08)'},emphasis:{disabled:true}},
+          {name:'P90-P10 MDA',type:'line',symbol:'none',data:q.map(x=> (x.p90Mda ?? 0) - (x.p10Mda ?? 0)),lineStyle:{opacity:0},stack:'mdaBand',areaStyle:{color:'rgba(47,125,246,0.18)'},emphasis:{disabled:true}},
+          {name:'P50 MDA',type:'line',symbol:'none',smooth:true,data:q.map(x=>x.p50Mda),lineStyle:{width:2.5,color:COLORS.mda}},
+          {name:'P50 MTR',type:'line',symbol:'none',smooth:true,data:q.map(x=>x.p50Mtr),lineStyle:{width:2.5,color:COLORS.mtr}}
+        ]
+      });
+    }
+
+    function renderFftChart() {
+      const f = analyticsData.fft || {};
+      const mda = f.topComponentesMda || [];
+      const labels = mda.map(x => `${Number(x.periodHours).toFixed(1)}h`);
+      charts.fftChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        grid:{left:48,right:20,top:52,bottom:40},
+        xAxis:{type:'category',data:labels,axisLabel:{color:COLORS.muted,rotate:25}},
+        yAxis:[
+          {type:'value',name:'Amplitud',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+          {type:'value',name:'Power %',axisLabel:{color:COLORS.muted,formatter:v=>v+'%'}}
+        ],
+        series:[
+          {name:'Amplitud MDA',type:'bar',data:mda.map(x=>x.amplitude),itemStyle:{color:COLORS.mda},barMaxWidth:26},
+          {name:'Power share MDA',type:'line',yAxisIndex:1,symbol:'circle',data:mda.map(x=>x.powerShare),lineStyle:{width:2.2,color:'#7c5cff'}}
+        ]
+      });
+    }
+
+    function renderClusterCharts() {
+      const c = analyticsData.clustering || {};
+      const clusters = c.clusters || [];
+      const labels = clusters.map(x => `C${x.cluster}`);
+      charts.clusterBarChart.setOption({
+        tooltip:{trigger:'axis'},
+        toolbox:{right:10,feature:{restore:{}}},
+        grid:{left:42,right:18,top:16,bottom:66},
+        xAxis:{type:'category',data:labels,axisLabel:{color:COLORS.muted}},
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        series:[{type:'bar',data:clusters.map(x=>x.totalDias),itemStyle:{color:'#7c5cff'},barMaxWidth:38,label:{show:true,position:'top'}}]
+      });
+      charts.clusterProfileChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        toolbox:{right:10,feature:{restore:{}}},
+        grid:{left:52,right:20,top:42,bottom:72},
+        xAxis:{type:'category',data:Array.from({length:24}, (_,i)=>`H${i+1}`),axisLabel:{color:COLORS.muted}},
+        yAxis:{type:'value',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+        series:clusters.map((cl, idx)=>({name:`C${cl.cluster} · ${cl.totalDias} días`,type:'line',symbol:'none',smooth:true,data:cl.centroide24h || [],lineStyle:{width:2}}))
+      });
+    }
+
+    function renderAnomalyChart() {
+      const a = analyticsData.anomalies || {};
+      const anomalies = a.anomalies || [];
+      charts.anomalyChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{top:0,textStyle:{color:COLORS.muted}},
+        dataZoom: buildDataZoom(anomalies.length, 60),
+        toolbox:{right:10,feature:{dataZoom:{yAxisIndex:'none'},restore:{}}},
+        grid:{left:48,right:20,top:52,bottom:78},
+        xAxis:{type:'category',data:anomalies.map(x=>`${x.fecha} H${x.hora}`),axisLabel:{color:COLORS.muted,hideOverlap:true}},
+        yAxis:[
+          {type:'value',name:'Spread',axisLabel:{color:COLORS.muted},splitLine:{lineStyle:{color:COLORS.grid}}},
+          {type:'value',name:'Z',axisLabel:{color:COLORS.muted}}
+        ],
+        series:[
+          {name:'Spread',type:'bar',data:anomalies.map(x=>x.spread),itemStyle:{color:COLORS.spread},barMaxWidth:14},
+          {name:'Baseline',type:'line',symbol:'none',data:anomalies.map(x=>x.baseline),lineStyle:{width:2,color:COLORS.mtr}},
+          {name:'Z-score',type:'line',yAxisIndex:1,symbol:'circle',data:anomalies.map(x=>x.zScore),lineStyle:{width:2,color:'#d64545'}}
+        ]
+      });
+    }
+
+    function renderTable() {
+      const rows = (dashboard.serie || []).slice(-240).reverse();
+      document.getElementById('tableBody').innerHTML = rows.map(r => {
+        const spread = (r.mtr ?? 0) - (r.mda ?? 0);
+        const pctDiff = Math.abs(r.mda) >= 5 ? (spread / Math.abs(r.mda)) * 100 : null;
+        return `
+          <tr>
+            <td>${r.fecha}</td>
+            <td>${r.hora}</td>
+            <td class="mono">$${fmt(r.mda)}</td>
+            <td class="mono">$${fmt(r.mtr)}</td>
+            <td class="mono" style="color:${spread >= 0 ? '#7c5cff' : '#d64545'}">${spread >= 0 ? '+' : ''}${fmt(spread)}</td>
+            <td class="mono" style="color:${pctDiff == null ? COLORS.muted : pctDiff >= 0 ? '#7c5cff' : '#d64545'}">${pctDiff == null ? '—' : (pctDiff >= 0 ? '+' : '') + fmt(pctDiff) + '%'}</td>
+            <td class="mono">${r.markovPredMda == null ? '—' : '$' + fmt(r.markovPredMda)}</td>
+            <td>${STATE_LABELS[r.mdaEstado] || '—'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('sel-view-mode').addEventListener('change', () => dashboard && renderOverviewChart());
+    document.getElementById('sel-detail-window').addEventListener('change', () => dashboard && renderMarkovCompareChart());
+    document.getElementById('sel-clusters-k').addEventListener('change', () => dashboard && fetchDashboard());
+    document.getElementById('sel-z-threshold').addEventListener('change', () => dashboard && fetchDashboard());
+
+    loadDemo();
+  </script>
+</body>
+</html>
